@@ -11,8 +11,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class EntityHitbox implements HitBox {
-    private HitBoxType type;
-    private Entity entity;
+    private final HitBoxType type;
+    private final Entity entity;
 
     public EntityHitbox(Entity entity) {
         this.entity = entity;
@@ -24,6 +24,10 @@ public class EntityHitbox implements HitBox {
         } else {
             this.type = HitBoxType.AABB;
         }
+    }
+
+    public @NotNull Entity getEntity() {
+        return this.entity;
     }
 
     public @NotNull AbstractDisplayMeta getEntityMeta() {
