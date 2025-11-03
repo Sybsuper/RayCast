@@ -25,6 +25,7 @@ import org.apache.commons.numbers.quaternion.Quaternion;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.skolkovolab.raycast.entity.EntityHitbox;
 import ru.skolkovolab.raycast.entity.HitBox;
 import ru.skolkovolab.raycast.entity.HitBoxGroup;
 import ru.skolkovolab.raycast.shared.VecRel;
@@ -55,7 +56,10 @@ public class RayCast {
         world.setBlock(2, 16, 5, Block.YELLOW_STAINED_GLASS_PANE, true);
         world.setBlock(5, 15, 5, Block.STONE_STAIRS.withProperty("facing", "east"), true);
 
+        HashMap<Vec, List<Color>> map = new HashMap<>();
         GlobalEventHandler globalEventHandler = MinecraftServer.getGlobalEventHandler();
+        HashMap<UUID, EntityHitbox> playerMap = new HashMap<>();
+        HashSet<HitBox> entities = (HashSet<HitBox>) randomEntitySet(world);
         globalEventHandler.addListener(AsyncPlayerConfigurationEvent.class, event -> {
             event.setSpawningInstance(world);
             event.getPlayer().setRespawnPoint(new Pos(0, 11, 0));
@@ -63,9 +67,12 @@ public class RayCast {
             event.getPlayer().getInventory().addItemStack(ItemStack.of(Material.GRASS_BLOCK));
             event.getPlayer().getInventory().addItemStack(ItemStack.of(Material.GLASS));
             event.getPlayer().getInventory().addItemStack(ItemStack.of(Material.STONE_STAIRS));
+            if (playerMap.containsKey(event.getPlayer().getUuid())) {
+                entities.remove(playerMap.get(event.getPlayer().getUuid()));
+            }
+            playerMap.put(event.getPlayer().getUuid(), new EntityHitbox(event.getPlayer()));
+            entities.add(playerMap.get(event.getPlayer().getUuid()));
         });
-
-        Set<HitBox> entities = randomEntitySet(world);
 
         try {
             Class.forName("ru.skolkovolab.raycast.block.RayCastBlock.class");
@@ -73,7 +80,6 @@ public class RayCast {
         }
 
         AtomicBoolean atomicBoolean = new AtomicBoolean(false);
-        Map<Vec, List<Color>> map = new HashMap<>();
         Command command = new Command("ray");
         command.setDefaultExecutor((sender, context) -> {
             if (sender instanceof Player player) {
@@ -118,6 +124,7 @@ public class RayCast {
                                 }
                             });
                 } catch (Exception exception) {
+                    exception.printStackTrace();
                     log.warn("RayCast exception", exception);
                 }
 //                player.sendMessage("Ray cast from: " + player.getPosition().asVec());

@@ -3,50 +3,49 @@ package ru.skolkovolab.raycast.entity;
 import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.EntityType;
+import net.minestom.server.entity.LivingEntity;
+import net.minestom.server.entity.attribute.Attribute;
 import net.minestom.server.entity.metadata.display.AbstractDisplayMeta;
-import net.minestom.server.entity.metadata.display.BlockDisplayMeta;
-import net.minestom.server.entity.metadata.display.ItemDisplayMeta;
-import net.minestom.server.instance.block.Block;
-import net.minestom.server.item.ItemStack;
-import net.minestom.server.item.Material;
 import org.apache.commons.geometry.euclidean.threed.rotation.QuaternionRotation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * @author sidey383
- */
-public class HitBoxTest extends Entity implements HitBox {
-    private final HitBoxType type;
+public class EntityHitbox implements HitBox {
+    private HitBoxType type;
+    private Entity entity;
 
-    public HitBoxTest(EntityType type) {
-        super(type);
+    public EntityHitbox(Entity entity) {
+        this.entity = entity;
+        EntityType type = entity.getEntityType();
         if (type.equals(EntityType.ITEM_DISPLAY)) {
             this.type = HitBoxType.ITEM_DISPLAY_NONE;
-            ItemDisplayMeta m = (ItemDisplayMeta) super.getEntityMeta();
-            m.setItemStack(ItemStack.of(Material.DIRT));
         } else if (type.equals(EntityType.BLOCK_DISPLAY)) {
             this.type = HitBoxType.BLOCK_DISPLAY;
-            BlockDisplayMeta m = (BlockDisplayMeta) super.getEntityMeta();
-            m.setBlockState(Block.DIRT);
         } else {
             this.type = HitBoxType.AABB;
         }
-        getEntityMeta().setHasNoGravity(true);
     }
 
-    @Override
     public @NotNull AbstractDisplayMeta getEntityMeta() {
-        return (AbstractDisplayMeta) super.getEntityMeta();
+        return (AbstractDisplayMeta) entity.getEntityMeta();
     }
 
     @Override
     public Vec getHitBoxPosition() {
-        return getPosition().add(getEntityMeta().getTranslation()).asVec();
+        if (this.type == HitBoxType.AABB) return entity.getPosition().asVec();
+        return entity.getPosition().add(getEntityMeta().getTranslation()).asVec();
     }
 
     @Override
     public Vec getHitBoxScale() {
+        if (this.type == HitBoxType.AABB) {
+            if (this.entity instanceof LivingEntity livingEntity) {
+                double scale = livingEntity.getAttributeValue(Attribute.SCALE);
+                return new Vec(scale);
+            } else {
+                return Vec.ONE;
+            }
+        }
         return getEntityMeta().getScale();
     }
 
@@ -64,18 +63,18 @@ public class HitBoxTest extends Entity implements HitBox {
 
     @Override
     public HitBoxType getHitBoxType() {
-        return type;
+        return this.type;
     }
 
     @Override
     public @Nullable Vec getAABBMin() {
-        Vec start = this.boundingBox.relativeStart();
-        return start.add(this.position);
+        Vec start = entity.getBoundingBox().relativeStart();
+        return start.add(entity.getPosition());
     }
 
     @Override
     public @Nullable Vec getAABBMax() {
-        Vec end = this.boundingBox.relativeEnd();
-        return end.add(this.position);
+        Vec end = entity.getBoundingBox().relativeEnd();
+        return end.add(entity.getPosition());
     }
 }

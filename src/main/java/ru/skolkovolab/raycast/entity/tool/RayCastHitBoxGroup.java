@@ -87,6 +87,7 @@ public class RayCastHitBoxGroup<T extends HitBox> implements Iterable<HitBoxColl
         return switch (hitbox.getHitBoxType()) {
             case BLOCK_DISPLAY -> getBlockCollisions(parent, hitbox, p, dir);
             case ITEM_DISPLAY_NONE -> getItemNoneCollisions(parent, hitbox, p, dir);
+            case AABB -> getAABBCollisions(parent, hitbox, p, dir);
         };
     }
 
@@ -107,6 +108,64 @@ public class RayCastHitBoxGroup<T extends HitBox> implements Iterable<HitBoxColl
         RayCastHitBoxUtils.applyScale(directions, hitbox.getHitBoxScale());
         RayCastHitBoxUtils.applyRotation(directions, hitbox.getHitBoxLeftRotation());
         double[] intersections = RayCastHitBoxUtils.rhombohedronCenterIntersection(p, dir, directions, RayCastTool.minestomToEuclidean(hitbox.getHitBoxPosition()));
+        return toCollisions(parent, p, dir, hitbox, intersections);
+    }
+
+    private static <TR extends HitBox> Collision<TR>[] getAABBCollisions(HitBoxGroup<TR> parent,
+                                                                         TR hitbox, Vector3D p, Vector3D dir) {
+        // Robust Axis-Aligned Bounding Box ray intersection (slab method)
+        var minVec = hitbox.getAABBMin();
+        var maxVec = hitbox.getAABBMax();
+        if (minVec == null || maxVec == null)
+            return null;
+
+        double minX = Math.min(minVec.x(), maxVec.x());
+        double minY = Math.min(minVec.y(), maxVec.y());
+        double minZ = Math.min(minVec.z(), maxVec.z());
+        double maxX = Math.max(minVec.x(), maxVec.x());
+        double maxY = Math.max(minVec.y(), maxVec.y());
+        double maxZ = Math.max(minVec.z(), maxVec.z());
+
+        double tmin = Double.NEGATIVE_INFINITY;
+        double tmax = Double.POSITIVE_INFINITY;
+
+        // X slab
+        if (dir.getX() == 0) {
+            if (p.getX() < minX || p.getX() > maxX) return null;
+        } else {
+            double tx1 = (minX - p.getX()) / dir.getX();
+            double tx2 = (maxX - p.getX()) / dir.getX();
+            if (tx1 > tx2) { double tmp = tx1; tx1 = tx2; tx2 = tmp; }
+            if (tx1 > tmin) tmin = tx1;
+            if (tx2 < tmax) tmax = tx2;
+            if (tmin > tmax) return null;
+        }
+
+        // Y slab
+        if (dir.getY() == 0) {
+            if (p.getY() < minY || p.getY() > maxY) return null;
+        } else {
+            double ty1 = (minY - p.getY()) / dir.getY();
+            double ty2 = (maxY - p.getY()) / dir.getY();
+            if (ty1 > ty2) { double tmp = ty1; ty1 = ty2; ty2 = tmp; }
+            if (ty1 > tmin) tmin = ty1;
+            if (ty2 < tmax) tmax = ty2;
+            if (tmin > tmax) return null;
+        }
+
+        // Z slab
+        if (dir.getZ() == 0) {
+            if (p.getZ() < minZ || p.getZ() > maxZ) return null;
+        } else {
+            double tz1 = (minZ - p.getZ()) / dir.getZ();
+            double tz2 = (maxZ - p.getZ()) / dir.getZ();
+            if (tz1 > tz2) { double tmp = tz1; tz1 = tz2; tz2 = tmp; }
+            if (tz1 > tmin) tmin = tz1;
+            if (tz2 < tmax) tmax = tz2;
+            if (tmin > tmax) return null;
+        }
+
+        double[] intersections = new double[]{tmin, tmax};
         return toCollisions(parent, p, dir, hitbox, intersections);
     }
 
